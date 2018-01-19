@@ -1,6 +1,8 @@
-package main
+package server
 
 import (
+	"../common"
+
 	"bufio"
 	"crypto/rand"
 	"crypto/subtle"
@@ -17,7 +19,7 @@ import (
 
 // ClientConnection - A client connection
 type ClientConnection struct {
-	conf          Conf
+	conf          common.Conf
 	conn          net.Conn
 	reader        *bufio.Reader
 	writer        *bufio.Writer
@@ -34,9 +36,9 @@ type StoredContent struct {
 	ciphertextWithNonce []byte
 }
 
-var storedContent StoredContent
 var trustedClients TrustedClients
 var clientsCount = uint64(0)
+var storedContent StoredContent
 
 func (cnx *ClientConnection) getOperation(h1 []byte, isMove bool) {
 	conf, reader, writer := cnx.conf, cnx.reader, cnx.writer
@@ -50,7 +52,7 @@ func (cnx *ClientConnection) getOperation(h1 []byte, isMove bool) {
 	if isMove {
 		opcode = byte('M')
 	}
-	wh2 := auth2get(conf, cnx.clientVersion, h1, opcode)
+	wh2 := common.Auth2get(conf, cnx.clientVersion, h1, opcode)
 	if subtle.ConstantTimeCompare(wh2, h2) != 1 {
 		return
 	}
@@ -73,7 +75,7 @@ func (cnx *ClientConnection) getOperation(h1 []byte, isMove bool) {
 	}
 
 	cnx.conn.SetDeadline(time.Now().Add(conf.DataTimeout))
-	h3 := auth3get(conf, cnx.clientVersion, h2, encryptSkID, ts, signature)
+	h3 := common.Auth3get(conf, cnx.clientVersion, h2, encryptSkID, ts, signature)
 	writer.Write(h3)
 	ciphertextWithNonceLen := uint64(len(ciphertextWithNonce))
 	binary.Write(writer, binary.LittleEndian, ciphertextWithNonceLen)
@@ -120,7 +122,7 @@ func (cnx *ClientConnection) storeOperation(h1 []byte) {
 	}
 	opcode := byte('S')
 
-	wh2 := auth2store(conf, cnx.clientVersion, h1, opcode, encryptSkID, ts, signature)
+	wh2 := common.Auth2store(conf, cnx.clientVersion, h1, opcode, encryptSkID, ts, signature)
 	if subtle.ConstantTimeCompare(wh2, h2) != 1 {
 		return
 	}
@@ -134,7 +136,7 @@ func (cnx *ClientConnection) storeOperation(h1 []byte) {
 	if ed25519.Verify(conf.SignPk, ciphertextWithNonce, signature) != true {
 		return
 	}
-	h3 := auth3store(conf, cnx.clientVersion, h2)
+	h3 := common.Auth3store(conf, cnx.clientVersion, h2)
 
 	storedContent.Lock()
 	storedContent.encryptSkID = encryptSkID
@@ -150,7 +152,7 @@ func (cnx *ClientConnection) storeOperation(h1 []byte) {
 	}
 }
 
-func handleClientConnection(conf Conf, conn net.Conn) {
+func handleClientConnection(conf common.Conf, conn net.Conn) {
 	defer conn.Close()
 	reader, writer := bufio.NewReader(conn), bufio.NewWriter(conn)
 	cnx := ClientConnection{
@@ -170,7 +172,7 @@ func handleClientConnection(conf Conf, conn net.Conn) {
 	}
 	r := rbuf[1:33]
 	h0 := rbuf[33:65]
-	wh0 := auth0(conf, cnx.clientVersion, r)
+	wh0 := common.Auth0(conf, cnx.clientVersion, r)
 	if subtle.ConstantTimeCompare(wh0, h0) != 1 {
 		return
 	}
@@ -178,7 +180,7 @@ func handleClientConnection(conf Conf, conn net.Conn) {
 	if _, err := rand.Read(r); err != nil {
 		log.Fatal(err)
 	}
-	h1 := auth1(conf, cnx.clientVersion, h0, r2)
+	h1 := common.Auth1(conf, cnx.clientVersion, h0, r2)
 	writer.Write([]byte{cnx.clientVersion})
 	writer.Write(r2)
 	writer.Write(h1)
@@ -209,7 +211,7 @@ type TrustedClients struct {
 	ips []net.IP
 }
 
-func addToTrustedIPs(conf Conf, ip net.IP) {
+func addToTrustedIPs(conf common.Conf, ip net.IP) {
 	trustedClients.Lock()
 	if uint64(len(trustedClients.ips)) >= conf.TrustedIPCount {
 		trustedClients.ips = append(trustedClients.ips[1:], ip)
@@ -219,7 +221,7 @@ func addToTrustedIPs(conf Conf, ip net.IP) {
 	trustedClients.Unlock()
 }
 
-func isIPTrusted(conf Conf, ip net.IP) bool {
+func isIPTrusted(conf common.Conf, ip net.IP) bool {
 	trustedClients.RLock()
 	defer trustedClients.RUnlock()
 	if len(trustedClients.ips) == 0 {
@@ -233,12 +235,12 @@ func isIPTrusted(conf Conf, ip net.IP) bool {
 	return false
 }
 
-func acceptClient(conf Conf, conn net.Conn) {
+func acceptClient(conf common.Conf, conn net.Conn) {
 	handleClientConnection(conf, conn)
 	atomic.AddUint64(&clientsCount, ^uint64(0))
 }
 
-func maybeAcceptClient(conf Conf, conn net.Conn) {
+func maybeAcceptClient(conf common.Conf, conn net.Conn) {
 	conn.SetDeadline(time.Now().Add(conf.Timeout))
 	remoteIP := conn.RemoteAddr().(*net.TCPAddr).IP
 	for {
@@ -258,8 +260,8 @@ func maybeAcceptClient(conf Conf, conn net.Conn) {
 }
 
 // RunServer - run a server
-func RunServer(conf Conf) {
-	go handleSignals()
+func RunServer(conf common.Conf) {
+	go common.HandleSignals()
 	listen, err := net.Listen("tcp", conf.Listen)
 	if err != nil {
 		log.Fatal(err)

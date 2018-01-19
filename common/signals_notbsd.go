@@ -1,5 +1,5 @@
 // +build !darwin,!dragonfly,!freebsd,!netbsd,!openbsd
 
-package main
+package common
 
-func handleSignals() {}
+func HandleSignals() {}

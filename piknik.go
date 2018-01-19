@@ -1,6 +1,10 @@
 package main
 
 import (
+	"./common"
+	"./client"
+	"./server"
+
 	"encoding/binary"
 	"encoding/hex"
 	"flag"
@@ -9,6 +13,7 @@ import (
 	"log"
 	"runtime"
 	"time"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	blake2b "github.com/minio/blake2b-simd"
@@ -41,21 +46,14 @@ type tomlConfig struct {
 	TTL         uint
 }
 
-// Conf - Shared config
-type Conf struct {
-	Connect        string
-	Listen         string
-	MaxClients     uint64
-	MaxLen         uint64
-	EncryptSk      []byte
-	EncryptSkID    []byte
-	Psk            []byte
-	SignPk         []byte
-	SignSk         []byte
-	Timeout        time.Duration
-	DataTimeout    time.Duration
-	TTL            time.Duration
-	TrustedIPCount uint64
+// StoredContent - Paste buffer
+type StoredContent struct {
+	sync.RWMutex
+
+	encryptSkID         []byte
+	ts                  []byte
+	signature           []byte
+	ciphertextWithNonce []byte
 }
 
 func expandConfigFile(path string) string {
@@ -68,10 +66,10 @@ func expandConfigFile(path string) string {
 
 func version() {
 	fmt.Printf("\nPiknik v%v (protocol version: %v)\n",
-		Version, DefaultClientVersion)
+		Version, client.DefaultClientVersion)
 }
 
-func confCheck(conf Conf, isServer bool) {
+func confCheck(conf common.Conf, isServer bool) {
 	if len(conf.Psk) != 32 {
 		log.Fatal("Configuration error: the Psk property is either missing or invalid")
 	}
@@ -132,7 +130,7 @@ func main() {
 	if _, err = toml.Decode(string(tomlData), &tomlConf); err != nil {
 		log.Fatal(err)
 	}
-	var conf Conf
+	var conf common.Conf
 	if tomlConf.Listen == "" {
 		conf.Listen = DefaultListen
 	} else {
@@ -215,8 +213,8 @@ func main() {
 	}
 	confCheck(conf, *isServer)
 	if *isServer {
-		RunServer(conf)
+		server.RunServer(conf)
 	} else {
-		RunClient(conf, *isCopy, *isMove)
+		client.RunClient(conf, *isCopy, *isMove)
 	}
 }

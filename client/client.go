@@ -1,6 +1,8 @@
-package main
+package client
 
 import (
+	"../common"
+
 	"bufio"
 	"bytes"
 	"crypto/rand"
@@ -24,7 +26,7 @@ const DefaultClientVersion = byte(5)
 
 // Client - Client data
 type Client struct {
-	conf    Conf
+	conf    common.Conf
 	conn    net.Conn
 	reader  *bufio.Reader
 	writer  *bufio.Writer
@@ -55,7 +57,7 @@ func (client *Client) copyOperation(h1 []byte) {
 	signature := ed25519.Sign(conf.SignSk, ciphertextWithNonce)
 
 	client.conn.SetDeadline(time.Now().Add(conf.DataTimeout))
-	h2 := auth2store(conf, client.version, h1, opcode, conf.EncryptSkID, ts, signature)
+	h2 := common.Auth2store(conf, client.version, h1, opcode, conf.EncryptSkID, ts, signature)
 	writer.WriteByte(opcode)
 	writer.Write(h2)
 	ciphertextWithNonceLen := uint64(len(ciphertextWithNonce))
@@ -76,11 +78,11 @@ func (client *Client) copyOperation(h1 []byte) {
 		}
 	}
 	h3 := rbuf
-	wh3 := auth3store(conf, client.version, h2)
+	wh3 := common.Auth3store(conf, client.version, h2)
 	if subtle.ConstantTimeCompare(wh3, h3) != 1 {
 		log.Fatal("Incorrect authentication code")
 	}
-	if IsTerminal(int(syscall.Stderr)) {
+	if common.IsTerminal(int(syscall.Stderr)) {
 		os.Stderr.WriteString("Sent\n")
 	}
 }
@@ -91,7 +93,7 @@ func (client *Client) pasteOperation(h1 []byte, isMove bool) {
 	if isMove {
 		opcode = byte('M')
 	}
-	h2 := auth2get(conf, client.version, h1, opcode)
+	h2 := common.Auth2get(conf, client.version, h1, opcode)
 	writer.WriteByte(opcode)
 	writer.Write(h2)
 	if err := writer.Flush(); err != nil {
@@ -114,7 +116,7 @@ func (client *Client) pasteOperation(h1 []byte, isMove bool) {
 	encryptSkID := rbuf[40:48]
 	ts := rbuf[48:56]
 	signature := rbuf[56:120]
-	wh3 := auth3get(conf, client.version, h2, encryptSkID, ts, signature)
+	wh3 := common.Auth3get(conf, client.version, h2, encryptSkID, ts, signature)
 	if subtle.ConstantTimeCompare(wh3, h3) != 1 {
 		log.Fatal("Incorrect authentication code")
 	}
@@ -153,7 +155,7 @@ func (client *Client) pasteOperation(h1 []byte, isMove bool) {
 }
 
 // RunClient - Process a client query
-func RunClient(conf Conf, isCopy bool, isMove bool) {
+func RunClient(conf common.Conf, isCopy bool, isMove bool) {
 	conn, err := net.DialTimeout("tcp", conf.Connect, conf.Timeout)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Unable to connect to %v - Is a Piknik server running on that host?",
@@ -174,7 +176,7 @@ func RunClient(conf Conf, isCopy bool, isMove bool) {
 	if _, err = rand.Read(r); err != nil {
 		log.Fatal(err)
 	}
-	h0 := auth0(conf, client.version, r)
+	h0 := common.Auth0(conf, client.version, r)
 	writer.Write([]byte{client.version})
 	writer.Write(r)
 	writer.Write(h0)
@@ -195,7 +197,7 @@ func RunClient(conf Conf, isCopy bool, isMove bool) {
 	}
 	r2 := rbuf[1:33]
 	h1 := rbuf[33:65]
-	wh1 := auth1(conf, client.version, h0, r2)
+	wh1 := common.Auth1(conf, client.version, h0, r2)
 	if subtle.ConstantTimeCompare(wh1, h1) != 1 {
 		log.Fatal("Incorrect authentication code")
 	}

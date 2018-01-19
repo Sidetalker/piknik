@@ -1,6 +1,8 @@
 package main
 
 import (
+	"./common"
+
 	"bufio"
 	"crypto/rand"
 	"encoding/hex"
@@ -46,7 +48,7 @@ func (DeterministicRand) Read(p []byte) (n int, err error) {
 	return reqLen, nil
 }
 
-func genKeys(conf Conf, configFile string, leKey string) {
+func genKeys(conf common.Conf, configFile string, leKey string) {
 	randRead, randReader := rand.Read, io.Reader(nil)
 	if len(leKey) > 0 {
 		initDeterministicRand([]byte(leKey), 96)

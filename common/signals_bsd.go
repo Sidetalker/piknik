@@ -1,6 +1,6 @@
 // +build darwin dragonfly freebsd netbsd openbsd
 
-package main
+package common
 
 import (
 	"encoding/binary"
@@ -11,7 +11,9 @@ import (
 	"time"
 )
 
-func handleSignals() {
+var storedContent StoredContent
+
+func HandleSignals() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINFO)
 	for {

@@ -1,6 +1,6 @@
 // +build darwin dragonfly freebsd linux,!appengine netbsd openbsd windows
 
-package main
+package core
 
 import "golang.org/x/crypto/ssh/terminal"
 

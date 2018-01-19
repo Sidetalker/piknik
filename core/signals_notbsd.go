@@ -1,5 +1,5 @@
 // +build !darwin,!dragonfly,!freebsd,!netbsd,!openbsd
 
-package main
+package core
 
 func handleSignals() {}

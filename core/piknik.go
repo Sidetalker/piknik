@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"encoding/binary"
@@ -99,7 +99,7 @@ func confCheck(conf Conf, isServer bool) {
 	}
 }
 
-func main() {
+func Run() {
 	log.SetFlags(0)
 
 	isCopy := flag.Bool("copy", false, "store content (copy)")

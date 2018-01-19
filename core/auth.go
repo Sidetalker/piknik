@@ -1,4 +1,4 @@
-package main
+package core
 
 import blake2b "github.com/minio/blake2b-simd"
 

@@ -176,7 +176,7 @@ func handleClientConnection(conf Conf, conn net.Conn) {
 	}
 	r2 := make([]byte, 32)
 	if _, err := rand.Read(r); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	h1 := auth1(conf, cnx.clientVersion, h0, r2)
 	writer.Write([]byte{cnx.clientVersion})
@@ -262,13 +262,13 @@ func RunServer(conf Conf) {
 	go handleSignals()
 	listen, err := net.Listen("tcp", conf.Listen)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	defer listen.Close()
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 		maybeAcceptClient(conf, conn)
 	}

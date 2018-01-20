@@ -54,19 +54,19 @@ func genKeys(conf Conf, configFile string, leKey string) {
 	}
 	psk := make([]byte, 32)
 	if _, err := randRead(psk); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	pskHex := hex.EncodeToString(psk)
 
 	encryptSk := make([]byte, 32)
 	if _, err := randRead(encryptSk); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	encryptSkHex := hex.EncodeToString(encryptSk)
 
 	signPk, signSk, err := ed25519.GenerateKey(randReader)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	signPkHex := hex.EncodeToString(signPk)
 	signSkHex := hex.EncodeToString(signSk[0:32])
@@ -102,7 +102,7 @@ func getPassword(prompt string) string {
 	reader := bufio.NewReader(os.Stdin)
 	password, err := reader.ReadString('\n')
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	return strings.TrimSpace(password)
 }

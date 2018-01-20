@@ -61,7 +61,7 @@ type Conf struct {
 func expandConfigFile(path string) string {
 	file, err := homedir.Expand(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	return file
 }
@@ -73,28 +73,28 @@ func version() {
 
 func confCheck(conf Conf, isServer bool) {
 	if len(conf.Psk) != 32 {
-		log.Fatal("Configuration error: the Psk property is either missing or invalid")
+		log.Print("Configuration error: the Psk property is either missing or invalid")
 	}
 	if len(conf.SignPk) != 32 {
-		log.Fatal("Configuration error: the SignPk property is either missing or invalid")
+		log.Print("Configuration error: the SignPk property is either missing or invalid")
 	}
 	if isServer {
 		if len(conf.Listen) < 3 {
-			log.Fatal("Configuration error: the Listen property must be valid for a server")
+			log.Print("Configuration error: the Listen property must be valid for a server")
 		}
 		if conf.MaxClients <= 0 {
-			log.Fatal("Configuration error: MaxClients should be at least 1")
+			log.Print("Configuration error: MaxClients should be at least 1")
 		}
 	} else {
 		if len(conf.Connect) < 3 {
-			log.Fatal("Configuration error: the Connect property must be valid for a client")
+			log.Print("Configuration error: the Connect property must be valid for a client")
 		}
 		if len(conf.EncryptSk) != 32 || len(conf.SignSk) != 64 {
-			log.Fatal("Configuration error: the EncryptSk and SignSk properties must be present\n" +
+			log.Print("Configuration error: the EncryptSk and SignSk properties must be present\n" +
 				"and valid in order to use this command in client mode")
 		}
 		if conf.TTL <= 0 {
-			log.Fatal("TTL cannot be 0")
+			log.Print("TTL cannot be 0")
 		}
 	}
 }
@@ -124,11 +124,11 @@ func Run() {
 	}
 	tomlData, err := ioutil.ReadFile(expandConfigFile(*configFile))
 	if err != nil && *isGenKeys == false {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	var tomlConf tomlConfig
 	if _, err = toml.Decode(string(tomlData), &tomlConf); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	var conf Conf
 	if tomlConf.Listen == "" {
@@ -152,20 +152,20 @@ func Run() {
 	pskHex := tomlConf.Psk
 	psk, err := hex.DecodeString(pskHex)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	conf.Psk = psk
 	if encryptSkHex := tomlConf.EncryptSk; encryptSkHex != "" {
 		encryptSk, err := hex.DecodeString(encryptSkHex)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 		conf.EncryptSk = encryptSk
 	}
 	if signPkHex := tomlConf.SignPk; signPkHex != "" {
 		signPk, err := hex.DecodeString(signPkHex)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 		conf.SignPk = signPk
 	}
@@ -189,17 +189,17 @@ func Run() {
 	if signSkHex := tomlConf.SignSk; signSkHex != "" {
 		signSk, err := hex.DecodeString(signSkHex)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 		switch len(signSk) {
 		case 32:
 			if len(conf.SignPk) != 32 {
-				log.Fatal("Public signing key required")
+				log.Print("Public signing key required")
 			}
 			signSk = append(signSk, conf.SignPk...)
 		case 64:
 		default:
-			log.Fatal("Unsupported length for the secret signing key")
+			log.Print("Unsupported length for the secret signing key")
 		}
 		conf.SignSk = signSk
 	}

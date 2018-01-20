@@ -102,9 +102,7 @@ func confCheck(conf Conf, isServer bool) {
 func Run() {
 	log.SetFlags(0)
 
-	isCopy := flag.Bool("copy", false, "store content (copy)")
 	_ = flag.Bool("paste", false, "retrieve the content (paste) - this is the default action")
-	isMove := flag.Bool("move", false, "retrieve and delete the clipboard content")
 	isServer := flag.Bool("server", false, "start a server")
 	isGenKeys := flag.Bool("genkeys", false, "generate keys")
 	isDeterministic := flag.Bool("password", false, "derive the keys from a password (default=random keys)")
@@ -217,6 +215,6 @@ func Run() {
 	if *isServer {
 		RunServer(conf)
 	} else {
-		RunClient(*isCopy, *isMove)
+		RunClient()
 	}
 }

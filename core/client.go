@@ -7,16 +7,21 @@ import (
 	"crypto/subtle"
 	"encoding/binary"
 	"fmt"
+	"flag"
+	"encoding/hex"
 	"io"
 	"io/ioutil"
+	"runtime"
 	"log"
 	"net"
 	"os"
 	"syscall"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/yawning/chacha20"
 	"golang.org/x/crypto/ed25519"
+	blake2b "github.com/minio/blake2b-simd"
 )
 
 // DefaultClientVersion - Default client version
@@ -153,14 +158,13 @@ func (client *Client) pasteOperation(h1 []byte, isMove bool) {
 }
 
 // RunClient - Process a client query
-func RunClient(isCopy bool, isMove bool) {
+func RunClient() {
 	// Copy-pasted configuration code from piknik.go
 	log.SetFlags(0)
 
 	isCopy := flag.Bool("copy", false, "store content (copy)")
 	_ = flag.Bool("paste", false, "retrieve the content (paste) - this is the default action")
 	isMove := flag.Bool("move", false, "retrieve and delete the clipboard content")
-	isServer := flag.Bool("server", false, "start a server")
 	isGenKeys := flag.Bool("genkeys", false, "generate keys")
 	isDeterministic := flag.Bool("password", false, "derive the keys from a password (default=random keys)")
 	maxClients := flag.Uint64("maxclients", 10, "maximum number of simultaneous client connections")
@@ -315,9 +319,9 @@ func RunClient(isCopy bool, isMove bool) {
 	if subtle.ConstantTimeCompare(wh1, h1) != 1 {
 		log.Fatal("Incorrect authentication code")
 	}
-	if isCopy {
+	if *isCopy {
 		client.copyOperation(h1)
 	} else {
-		client.pasteOperation(h1, isMove)
+		client.pasteOperation(h1, *isMove)
 	}
 }

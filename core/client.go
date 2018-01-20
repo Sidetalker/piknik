@@ -34,6 +34,7 @@ type Client struct {
 	reader  *bufio.Reader
 	writer  *bufio.Writer
 	version byte
+	h1 []byte
 }
 
 func (client *Client) copyOperation(h1 []byte) {
@@ -90,7 +91,7 @@ func (client *Client) copyOperation(h1 []byte) {
 	}
 }
 
-func (client *Client) pasteOperation(h1 []byte, isMove bool) {
+func (client *Client) pasteOperation(h1 []byte, isMove bool) string {
 	conf, reader, writer := client.conf, client.reader, client.writer
 	opcode := byte('G')
 	if isMove {
@@ -155,36 +156,39 @@ func (client *Client) pasteOperation(h1 []byte, isMove bool) {
 	cipher.XORKeyStream(ciphertext, ciphertext)
 	content := ciphertext
 	binary.Write(os.Stdout, binary.LittleEndian, content)
+
+	return string(content)
 }
 
-// RunClient - Process a client query
-func RunClient() {
+func Initialize() {
 	// Copy-pasted configuration code from piknik.go
 	log.SetFlags(0)
 
-	isCopy := flag.Bool("copy", false, "store content (copy)")
-	_ = flag.Bool("paste", false, "retrieve the content (paste) - this is the default action")
-	isMove := flag.Bool("move", false, "retrieve and delete the clipboard content")
-	isGenKeys := flag.Bool("genkeys", false, "generate keys")
-	isDeterministic := flag.Bool("password", false, "derive the keys from a password (default=random keys)")
-	maxClients := flag.Uint64("maxclients", 10, "maximum number of simultaneous client connections")
-	maxLenMb := flag.Uint64("maxlen", 0, "maximum content length to accept in Mb (0=unlimited)")
-	timeout := flag.Uint("timeout", 10, "connection timeout (seconds)")
-	dataTimeout := flag.Uint("datatimeout", 3600, "data transmission timeout (seconds)")
-	isVersion := flag.Bool("version", false, "display package version")
+	flag.Bool("genkeys", false, "generate keys")
+	flag.Bool("password", false, "derive the keys from a password (default=random keys)")
+	flag.Uint64("maxclients", 10, "maximum number of simultaneous client connections")
+	flag.Uint64("maxlen", 0, "maximum content length to accept in Mb (0=unlimited)")
+	flag.Uint("timeout", 10, "connection timeout (seconds)")
+	flag.Uint("datatimeout", 3600, "data transmission timeout (seconds)")
+	flag.Bool("version", false, "display package version")
 
 	defaultConfigFile := "~/.piknik.toml"
 	if runtime.GOOS == "windows" {
 		defaultConfigFile = "~/piknik.toml"
 	}
-	configFile := flag.String("config", defaultConfigFile, "configuration file")
+	flag.String("config", defaultConfigFile, "configuration file")
 	flag.Parse()
-	if *isVersion {
-		version()
-		return
-	}
-	tomlData, err := ioutil.ReadFile(expandConfigFile(*configFile))
-	if err != nil && *isGenKeys == false {
+}
+
+func get_client() Client {
+	maxClients := uint64(10)
+	maxLenMb := uint64(0)
+	timeout := 10
+	dataTimeout := 3600
+	configFile := "~/Documents/.piknik.toml"
+
+	tomlData, err := ioutil.ReadFile(expandConfigFile(configFile))
+	if err != nil {
 		log.Fatal(err)
 	}
 	var tomlConf tomlConfig
@@ -201,15 +205,7 @@ func RunClient() {
 		conf.Connect = DefaultConnect
 	} else {
 		conf.Connect = tomlConf.Connect
-	}
-	if *isGenKeys {
-		leKey := ""
-		if *isDeterministic {
-			leKey = getPassword("Password> ")
-		}
-		genKeys(conf, *configFile, leKey)
-		return
-	}
+	}	
 	pskHex := tomlConf.Psk
 	psk, err := hex.DecodeString(pskHex)
 	if err != nil {
@@ -264,10 +260,10 @@ func RunClient() {
 		}
 		conf.SignSk = signSk
 	}
-	conf.MaxClients = *maxClients
-	conf.MaxLen = *maxLenMb * 1024 * 1024
-	conf.Timeout = time.Duration(*timeout) * time.Second
-	conf.DataTimeout = time.Duration(*dataTimeout) * time.Second
+	conf.MaxClients = maxClients
+	conf.MaxLen = maxLenMb * 1024 * 1024
+	conf.Timeout = time.Duration(timeout) * time.Second
+	conf.DataTimeout = time.Duration(dataTimeout) * time.Second
 	conf.TrustedIPCount = uint64(float64(conf.MaxClients) * 0.1)
 	if conf.TrustedIPCount < 1 {
 		conf.TrustedIPCount = 1
@@ -319,9 +315,17 @@ func RunClient() {
 	if subtle.ConstantTimeCompare(wh1, h1) != 1 {
 		log.Fatal("Incorrect authentication code")
 	}
-	if *isCopy {
-		client.copyOperation(h1)
-	} else {
-		client.pasteOperation(h1, *isMove)
-	}
+	client.h1 = h1
+	return client
+}
+
+// RunClient - Process a client query
+func Copy() {
+	client := get_client()
+	client.copyOperation(client.h1)
+}
+
+func Paste() string {
+	client := get_client()
+	return client.pasteOperation(client.h1, false)
 }

@@ -215,6 +215,6 @@ func Run() {
 	if *isServer {
 		RunServer(conf)
 	} else {
-		RunClient()
+		// RunClient()
 	}
 }

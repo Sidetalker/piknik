@@ -217,6 +217,6 @@ func Run() {
 	if *isServer {
 		RunServer(conf)
 	} else {
-		RunClient(conf, *isCopy, *isMove)
+		RunClient(*isCopy, *isMove)
 	}
 }
